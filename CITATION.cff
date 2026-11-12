@@ -1,0 +1,60 @@
+# ============================================================
+# CITATION.cff (How to cite this project)
+# ============================================================
+
+# REQ.UNIVERSAL: Professional open projects SHOULD include CITATION.cff.
+# WHY: Support correct citation and attribution.
+# ALT: Internal or private repositories may omit citation metadata.
+# CUSTOM: Update author, repository, license, and keyword fields as needed.
+# USAGE: See https://citation-file-format.github.io/ for details.
+
+cff-version: "1.2.0"
+type: software
+
+title: Web Mining and Applied NLP 04 API and JSON Data
+date-released: "2026-03-24"
+
+authors:
+  - family-names: Case
+    given-names: Denise M.
+    orcid: "https://orcid.org/0000-0001-6165-7389"
+    affiliation: "Northwest Missouri State University, USA"
+
+repository-code: "https://github.com/denisecase/nlp-04-api-text-data"
+url: "https://github.com/denisecase/nlp-04-api-text-data"
+license: MIT
+
+abstract: |
+  Web Mining and Applied NLP Example Project 4 - retrieving structured
+  text data from web APIs, inspecting JSON structure, validating data,
+  transforming records into tabular form, and loading results using an
+  EVTL (Extract, Validate, Transform, Load) pipeline.
+
+keywords:
+  # identity
+  - data analytics
+  - web mining
+  - applied natural language processing (NLP)
+  - API data processing
+
+  # concepts
+  - JSON
+  - API
+  - data pipelines
+  - EVTL
+  - data validation
+  - schema inspection
+
+  # practices
+  - reproducible workflows
+  - pipeline design
+
+  # tools and ecosystem
+  - python
+  - polars
+  - requests
+  - uv
+  - git
+  - github
+
+message: "If using this project, please cite it as described in this file."
