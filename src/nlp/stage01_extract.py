@@ -1,5 +1,8 @@
 """stage01_extract.py - Stage 01: Extract.
 
+Author: Abdelhafidh Mahouel
+Date: 2026-11
+
 NO EDITS REQUIRED IN THIS FILE (if paths have not changed.)
 
 Source: API

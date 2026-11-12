@@ -1,5 +1,8 @@
 """stage03_transform.py.
 
+Author: Abdelhafidh Mahouel
+Date: 2026-11
+
 (EDIT YOUR VERSION OF THIS FILE)
 
 Source: validated JSON object

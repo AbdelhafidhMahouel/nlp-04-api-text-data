@@ -1,5 +1,8 @@
 """stage02_validate.py.
 
+Author: Abdelhafidh Mahouel
+Date: 2026-11
+
 (EDIT YOUR VERSION OF THIS FILE)
 
 Source: raw JSON object

@@ -1,5 +1,8 @@
 """pipeline_api_json.py - Module 4 Script.
 
+Author: Abdelhafidh Mahouel
+Date: 2026-11
+
 NO EDITS REQUIRED IN THIS FILE (if paths have not changed.)
 
 Purpose

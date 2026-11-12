@@ -1,5 +1,8 @@
 """stage04_load.py.
 
+Author: Abdelhafidh Mahouel
+Date: 2026-11
+
 NO EDITS REQUIRED IN THIS FILE (if paths have not changed.)
 
 Source: DataFrame
