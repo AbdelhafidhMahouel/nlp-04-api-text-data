@@ -367,3 +367,6 @@ docs/assets/data/view-analytics.json
 docs/assets/data/guide-context.json
 # marimo WASM export; built at deploy time, not committed
 docs/app/
+
+#Large raw API response (about 6 MB) - regenerate by running the pipeline
+data/raw/mahouel_device_recalls_raw.json

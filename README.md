@@ -9,7 +9,8 @@
 [![Zensical docs](https://img.shields.io/badge/Zensical-docs-purple)](https://zensical.org/)
 [![MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-> Acquire, validate, and transform JSON data from web APIs using Python.
+> Acquire, validate, and transform JSON data from web APIs using Python,
+> applied to manufacturing quality and continuous improvement.
 
 ## Project Overview
 
@@ -19,74 +20,183 @@ Date: 2026 November
 
 Fourth project in the Web Mining and Applied NLP course.
 
-This custom project adapts the example EVTL pipeline
-to a different JSON API endpoint
-(JSONPlaceholder comments)
-to acquire, validate, and transform text records
-into an analysis-ready dataset.
+This project builds an Extract, Validate, Transform, Load (EVTL) pipeline
+that retrieves JSON data from a web API, validates its structure,
+transforms it into an analysis-ready dataset, and saves the results.
 
-This project introduces structured data acquisition
-using web APIs.
+The project was developed in three progressions:
 
-The goal is to retrieve JSON data,
-validate its structure,
-transform it into an analysis-ready dataset,
-and persist the results.
+1. **Example** - run the original pipeline on JSONPlaceholder posts.
+2. **Phase 4: Technical modification** - add word-level text features
+   to the example Transform stage.
+3. **Phase 5: New problem** - apply the pipeline to FDA medical device
+   recall data for manufacturing root cause and failure-mode analysis.
 
-The project demonstrates an Extract, Validate,
-Transform, Load (EVTL) pipeline.
+The original example files are kept as working references.
+Custom files use the `_mahouel` suffix.
 
 The project is configured in
 [pyproject.toml](pyproject.toml).
 
-## Data
+## Phase 4: Technical Modification
 
-The example retrieves JSON records from
-[JSONPlaceholder](https://jsonplaceholder.typicode.com/posts),
-a public demonstration API.
+**File changed:** [src/nlp/stage03_transform.py](src/nlp/stage03_transform.py)
 
-Each record includes fields such as:
+The example measured text only by character length.
+Five word-level features were added to describe text structure:
 
-- User identifier.
-- Post identifier.
-- Title.
-- Body text.
+| Feature | Meaning |
+| --- | --- |
+| `title_word_count` | Number of words in the title |
+| `body_word_count` | Number of words in the body |
+| `body_unique_word_count` | Number of distinct lowercase words in the body |
+| `body_lexical_diversity` | Unique words / total words (0 to 1) |
+| `body_avg_word_length` | Average characters per word |
 
-The pipeline preserves the raw JSON data
-and produces a structured CSV dataset.
+Words are matched with a regular expression,
+ratio features are protected against division by zero,
+and a statistical summary of the new features is logged on each run.
+
+**Prediction:** adding word-level features would add five columns
+without changing the existing ones.
+
+**Result:** the prediction held. The output grew from 6 to 11 columns
+for all 100 posts with no missing values.
+Bodies averaged 23.85 words and 5.78 characters per word,
+and lexical diversity averaged 0.912 (range 0.731 to 1.0),
+which reflects the low repetition of generated placeholder text.
+
+## Phase 5: Manufacturing Quality Application
+
+### Problem
+
+Every medical device recall is a manufacturing quality failure
+that reached the field.
+The FDA records a narrative reason for each recall and assigns a root cause.
+This project uses that data to answer:
+
+- Which root causes drive recalls (Pareto analysis)?
+- How many recalls are controllable on the production floor?
+- Which failure modes appear in the recall reason text?
+- How long do recalls stay open (corrective action cycle time)?
+
+### Data
+
+Data comes from the
+[openFDA Device Recall API](https://open.fda.gov/apis/device/recall/)
+(U.S. Food and Drug Administration),
+which is public and requires no API key.
+
+The pipeline requests the 200 most recent recall records:
+
+```text
+https://api.fda.gov/device/recall.json?sort=event_date_initiated:desc&limit=200
+```
+
+### How the JSON Differs from the Example
+
+| Example (JSONPlaceholder) | Custom (openFDA) |
+| --- | --- |
+| Top level is a list of records | Top level is a dictionary with `meta` and `results` |
+| Flat records | Records contain a nested `openfda` dictionary |
+| Every field always present | Fields can be missing (for example, `event_date_terminated`) |
+| One record per post | One recall event can span several product records |
+
+### Custom Files
+
+- [src/nlp/config_mahouel.py](src/nlp/config_mahouel.py) - openFDA API URL, User-Agent header, and custom output file names.
+- [src/nlp/stage02_validate_mahouel.py](src/nlp/stage02_validate_mahouel.py) - validates the dictionary structure, logs a field-presence data quality report, and excludes records without recall text.
+- [src/nlp/stage03_transform_mahouel.py](src/nlp/stage03_transform_mahouel.py) - flattens nested fields, normalizes text, and engineers manufacturing quality features.
+- [src/nlp/pipeline_api_json_mahouel.py](src/nlp/pipeline_api_json_mahouel.py) - runs the custom pipeline (Extract and Load stages are reused unchanged).
+- [tests/test_mahouel.py](tests/test_mahouel.py) - 12 offline tests for the custom stages.
+
+### Transformations and Derived Features
+
+| Feature | Description |
+| --- | --- |
+| `device_name`, `device_class`, `medical_specialty` | Flattened from the nested `openfda` dictionary using safe `.get()` access |
+| `reason_for_recall` | Recall text with line breaks and extra spaces normalized |
+| `root_cause_category` | FDA root cause mapped to a 6M / Ishikawa (fishbone) category: Method, Material, Machine, People, Environment, Design, Software, Labeling & Packaging, Unknown / Other |
+| `shop_floor_controllable` | True when the cause is Method, Material, Machine, People, or Environment |
+| `fm_contamination`, `fm_out_of_spec`, `fm_supplier`, `fm_mechanical`, `fm_electrical_software`, `fm_labeling` | Failure-mode keyword flags detected in the recall text |
+| `reason_word_count`, `reason_unique_word_count`, `reason_lexical_diversity` | Word-level text features reused from Phase 4 |
+| `recall_duration_days` | Days from initiation to termination (null while a recall is open) |
+
+### Results
+
+The API reported 59,705 total recall records; the pipeline processed
+the 200 most recent, with no records excluded by validation.
+The output is a 200-row, 22-column dataset.
+
+Recalls by root cause category (Pareto order):
+
+| Category | Recalls | Percent | Cumulative |
+| --- | ---: | ---: | ---: |
+| Method | 75 | 37.5% | 37.5% |
+| Unknown / Other | 61 | 30.5% | 68.0% |
+| Material | 19 | 9.5% | 77.5% |
+| Software | 18 | 9.0% | 86.5% |
+| Labeling & Packaging | 12 | 6.0% | 92.5% |
+| Machine | 11 | 5.5% | 98.0% |
+| Design | 4 | 2.0% | 100.0% |
+
+Failure modes found in the recall text:
+
+| Failure mode | Recalls |
+| --- | ---: |
+| Out of specification | 69 |
+| Mechanical | 22 |
+| Contamination | 20 |
+| Electrical / software | 19 |
+| Labeling | 18 |
+| Supplier | 0 |
+
+### Interpretation
+
+- **Process (Method) is the leading root cause** at 37.5% of recalls.
+- **52.5% of recalls (105 of 200) are controllable on the production floor**
+  (Method, Material, Machine), so many field failures trace back to
+  process control and incoming materials rather than product design.
+- **Out-of-specification** language is the most common failure mode
+  in the recall text.
+
+### Limitations
+
+- 30.5% of recent recalls are Unknown / Other because many are still
+  under investigation by the firm.
+- None of the 200 most recent recalls had a termination date,
+  so recall duration cannot be measured yet. A query for closed recalls
+  would be needed for cycle-time analysis.
+- One recall event can appear as several rows (one per product),
+  so counts represent product records, not unique recall events.
+- Keyword flags are rule-based and can miss synonyms or
+  match words out of context.
 
 ## Approach
 
 The project uses a modular Python pipeline
 to acquire, validate, transform, and save API data.
 
-The pipeline has four stages:
-
-- **Extract** - retrieve JSON data from an API.
-- **Validate** - verify the JSON structure and record types.
-- **Transform** - select fields and calculate derived text features.
+- **Extract** - retrieve JSON data from an API and save the raw response.
+- **Validate** - verify the JSON structure, record types, and required fields.
+- **Transform** - flatten, normalize, and calculate derived features.
 - **Load** - save the processed data to a CSV file.
 
-The example uses Requests for HTTP acquisition
+The project uses Requests for HTTP acquisition
 and Polars for tabular data processing.
 
-Explore these important project components:
+Example project components (kept as working references):
 
-- [pyproject.toml](pyproject.toml) - project identity, dependencies, and tool configuration.
-- [src/nlp/pipeline_api_json.py](src/nlp/pipeline_api_json.py) - main EVTL pipeline orchestrator.
+- [src/nlp/pipeline_api_json.py](src/nlp/pipeline_api_json.py) - example EVTL pipeline orchestrator.
 - [src/nlp/config.py](src/nlp/config.py) - example API and path configuration.
-- [src/nlp/stage01_extract.py](src/nlp/stage01_extract.py) - retrieve API data.
-- [src/nlp/stage02_validate.py](src/nlp/stage02_validate.py) - validate JSON data.
-- [src/nlp/stage03_transform.py](src/nlp/stage03_transform.py) - transform records into a DataFrame.
-- [src/nlp/stage04_load.py](src/nlp/stage04_load.py) - save processed results.
+- [src/nlp/stage01_extract.py](src/nlp/stage01_extract.py) - retrieve API data (shared).
+- [src/nlp/stage02_validate.py](src/nlp/stage02_validate.py) - example validation.
+- [src/nlp/stage03_transform.py](src/nlp/stage03_transform.py) - example transform with the Phase 4 modification.
+- [src/nlp/stage04_load.py](src/nlp/stage04_load.py) - save processed results (shared).
 - [tests/](tests/) - automated tests.
 - [.github/workflows/](.github/workflows/) - automated testing and documentation deployment.
 - [docs/](docs/) - project documentation.
 - [zensical.toml](zensical.toml) - documentation configuration.
-
-The goal is to understand how data moves
-through a reproducible pipeline
-with explicit stages and intermediate results.
 
 ## Run the Project
 
@@ -95,18 +205,17 @@ to set up your machine and project environment.
 
 From a VS Code terminal in the project root:
 
+Run the custom manufacturing quality pipeline (Phase 5):
+
+```shell
+uv run python -m nlp.pipeline_api_json_mahouel
+```
+
+Run the example pipeline with the Phase 4 modification:
+
 ```shell
 uv run python -m nlp.pipeline_api_json
 ```
-
-## Results
-
-The pipeline retrieves JSON records,
-checks their structure,
-and transforms the records into a tabular dataset.
-
-The Transform stage calculates derived fields,
-including title and body text lengths.
 
 Successful execution produces:
 
@@ -116,22 +225,23 @@ Pipeline executed successfully!
 ========================
 ```
 
-The following files are created:
+## Output Files
 
 - `project.log` - pipeline execution log.
-- `data/raw/case_raw.json` - original API response.
-- `data/processed/case_processed.csv` - transformed dataset.
-
-These artifacts provide evidence of successful
-data acquisition, validation, transformation, and persistence.
+- `data/raw/case_raw.json` - example API response (JSONPlaceholder posts).
+- `data/processed/case_processed.csv` - example dataset with Phase 4 features.
+- `data/raw/mahouel_device_recalls_raw.json` - openFDA API response.
+- `data/processed/mahouel_device_recalls_processed.csv` - manufacturing quality dataset.
 
 ## Verification
 
-Run the automated tests:
+Run the automated tests (example tests and custom tests):
 
 ```shell
 uv run python -m pytest
 ```
+
+All 14 tests pass (2 example tests and 12 custom tests).
 
 ## Project Documentation
 
